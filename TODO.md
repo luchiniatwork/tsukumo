@@ -13,27 +13,23 @@ What remains to implement, in recommended order.
 - [x] `ConcurrencyLimiter` (`src/host/concurrency.ts`)
 - [x] `zodShapeToOpts()` bridge (`src/cli/bridge.ts`)
 - [x] All public type exports (`src/index.ts`)
-
-## Phase 1 — Build Pipeline (§5)
-
-These produce the compiled stub binary that gets injected into sandboxes.
-
-- [ ] **Manifest generation** (`src/build/manifest.ts`)
-  - Convert each tool's Zod schema to JSON Schema via `zod-to-json-schema`
-  - Output the `Manifest` structure (version, tools array)
-  - Include name, description, args schema, timeout per tool
-
-- [ ] **CLI entry point codegen** (`src/build/codegen.ts`)
-  - Generate a temporary `.ts` file that embeds tool schemas (not handlers)
-  - Wire up the busybox pattern: `argv[0]` detection + subcommand dispatch
-  - Wire up `zod-opts` for argument parsing per tool
-  - Wire up the request/response file protocol (write request, wait for response)
-  - Reference `src/cli/bridge.ts` and `src/cli/wait.ts` logic
-
-- [ ] **Bun compiler wrapper** (`src/build/compiler.ts`)
-  - Shell out to `bun build --compile --target=<target>` for each target
-  - Write binaries to `outDir` as `tsukumo-{target}`
-  - Write `manifest.json` alongside the binaries
+- [x] **Manifest generation** (`src/build/manifest.ts`)
+  - Converts Zod schemas to JSON Schema via `zod-to-json-schema`
+  - Outputs `{ version: 1, tools: [...] }` manifest structure
+  - Uses structural `ManifestToolInput` type to avoid handler contravariance
+- [x] **CLI entry point codegen** (`src/build/codegen.ts`)
+  - `zodTypeToCode()` serializer: introspects Zod `_def` to emit TS source
+    (string, number, boolean, enum, array + optional/default/describe +
+    int/min/max/gt/lt/multipleOf refinements)
+  - `generateCliEntryPoint()` produces a self-contained stub source that
+    inlines busybox dispatch, zod-opts parsing, atomic request/response
+    protocol, and fs.watch+poll wait logic
+  - No imports from tsukumo source — only `zod` and `zod-opts`
+- [x] **Bun compiler wrapper** (`src/build/compiler.ts`)
+  - Shells out to `bun build --compile --target=<target>` via `Bun.spawn`
+  - Writes binaries to `outDir` as `tsukumo-{target}`
+  - Returns `CompileResult[]` with target and output path
+- [x] Unit tests for manifest, codegen, and compiler (51 tests)
 
 ## Phase 2 — CLI Stub (§9)
 
@@ -102,8 +98,10 @@ Ties everything together into the user-facing API.
 - [ ] Unit tests for `defineTool()` (validates schema, defaults timeout)
 - [ ] Unit tests for `ConcurrencyLimiter` (respects limit, queues excess)
 - [ ] Unit tests for `zodShapeToOpts()` bridge
-- [ ] Unit tests for manifest generation (Zod → JSON Schema correctness)
+- [x] Unit tests for manifest generation (Zod → JSON Schema correctness)
 - [ ] Unit tests for protocol types (request/response serialization)
+- [x] Unit tests for codegen (`zodTypeToCode` round-trip, generated source validity)
+- [x] Unit tests for compiler wrapper (compilation, error handling)
 - [ ] Integration test: codegen → compile → run stub binary
 - [ ] Integration test: full round-trip (stub writes request → host reads → executes → writes response → stub reads)
 - [ ] E2B adapter tests (mock or live sandbox)
