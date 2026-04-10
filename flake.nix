@@ -18,6 +18,10 @@
           packages = with pkgs; [
             bun
           ];
+
+          shellHook = ''
+            export PS1="\[\033[1;31m\][tsukumo] \w $ \[\033[0m\]"
+          '';
         };
       });
     };
